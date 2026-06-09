@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# SQLite database (local data — not committed)
+server/data/
+
+# Environment variables
+server/.env
+.env
+
+# Build output
+client/dist/
+
+# Logs
+*.log
+server.log
+client.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Claude Code local files
+.claude/
