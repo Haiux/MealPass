@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db/index');
 const { requireAuth } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/roleCheck');
+const { logAdminAction } = require('../db/auditLog');
 
 const router = express.Router();
 
@@ -33,6 +34,13 @@ router.post('/', requireAdmin, (req, res) => {
     const card = db.prepare(`
       SELECT c.*, g.name as group_name FROM cards c JOIN groups g ON c.group_id = g.id WHERE c.id = ?
     `).get(result.lastInsertRowid);
+
+    logAdminAction(req, {
+      action: 'CREATE', resourceType: 'card',
+      resourceId: card.id, resourceLabel: card.card_number,
+      newValues: { card_number: card.card_number, holder_name: card.holder_name, group: card.group_name, active: card.active, expires_at: card.expires_at },
+    });
+
     res.status(201).json({ card });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
@@ -46,6 +54,8 @@ router.put('/:id', requireAdmin, (req, res) => {
   const { card_number, holder_name, group_id, active, expires_at } = req.body;
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ message: 'Card not found' });
+
+  const oldGroup = db.prepare('SELECT name FROM groups WHERE id = ?').get(card.group_id);
 
   try {
     db.prepare(`
@@ -63,6 +73,14 @@ router.put('/:id', requireAdmin, (req, res) => {
     const updated = db.prepare(`
       SELECT c.*, g.name as group_name FROM cards c JOIN groups g ON c.group_id = g.id WHERE c.id = ?
     `).get(req.params.id);
+
+    logAdminAction(req, {
+      action: 'UPDATE', resourceType: 'card',
+      resourceId: card.id, resourceLabel: updated.card_number,
+      oldValues: { card_number: card.card_number, holder_name: card.holder_name, group: oldGroup?.name, active: card.active, expires_at: card.expires_at },
+      newValues: { card_number: updated.card_number, holder_name: updated.holder_name, group: updated.group_name, active: updated.active, expires_at: updated.expires_at },
+    });
+
     res.json({ card: updated });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
@@ -73,9 +91,19 @@ router.put('/:id', requireAdmin, (req, res) => {
 });
 
 router.delete('/:id', requireAdmin, (req, res) => {
-  const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
+  const card = db.prepare(`
+    SELECT c.*, g.name as group_name FROM cards c JOIN groups g ON c.group_id = g.id WHERE c.id = ?
+  `).get(req.params.id);
   if (!card) return res.status(404).json({ message: 'Card not found' });
+
   db.prepare('UPDATE cards SET active = 0 WHERE id = ?').run(req.params.id);
+
+  logAdminAction(req, {
+    action: 'DELETE', resourceType: 'card',
+    resourceId: card.id, resourceLabel: card.card_number,
+    oldValues: { card_number: card.card_number, holder_name: card.holder_name, group: card.group_name, active: 1 },
+  });
+
   res.json({ message: 'Card deactivated' });
 });
 

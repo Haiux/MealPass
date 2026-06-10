@@ -50,6 +50,19 @@ db.exec(`
     scanned_at TEXT NOT NULL,
     scanned_by_id INTEGER REFERENCES users(id)
   );
+
+  CREATE TABLE IF NOT EXISTS admin_logs (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    action           TEXT NOT NULL CHECK(action IN ('CREATE','UPDATE','DELETE')),
+    resource_type    TEXT NOT NULL,
+    resource_id      INTEGER,
+    resource_label   TEXT,
+    old_values       TEXT,
+    new_values       TEXT,
+    performed_by_id  INTEGER REFERENCES users(id),
+    performed_by_name TEXT,
+    timestamp        TEXT NOT NULL
+  );
 `);
 
 const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;

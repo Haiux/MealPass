@@ -10,6 +10,8 @@ import Groups from './pages/admin/Groups';
 import Schedules from './pages/admin/Schedules';
 import Logs from './pages/admin/Logs';
 import Users from './pages/admin/Users';
+import Reports from './pages/admin/Reports';
+import AuditLog from './pages/admin/AuditLog';
 
 export default function App() {
   return (
@@ -32,6 +34,8 @@ export default function App() {
             <Route path="schedules" element={<Schedules />} />
             <Route path="logs" element={<Logs />} />
             <Route path="users" element={<Users />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="audit-log" element={<AuditLog />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/login" replace />} />

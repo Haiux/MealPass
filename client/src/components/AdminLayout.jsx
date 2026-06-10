@@ -8,6 +8,8 @@ const navItems = [
   { to: '/admin/schedules', label: 'Schedules', icon: '◷' },
   { to: '/admin/logs', label: 'Scan Logs', icon: '☰' },
   { to: '/admin/users', label: 'Users', icon: '◎' },
+  { to: '/admin/reports', label: 'Reports', icon: '⊞' },
+  { to: '/admin/audit-log', label: 'Audit Log', icon: '⊙' },
 ];
 
 export default function AdminLayout() {

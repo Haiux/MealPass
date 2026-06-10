@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db/index');
 const { requireAuth } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/roleCheck');
+const { logAdminAction } = require('../db/auditLog');
 
 const router = express.Router();
 
@@ -20,6 +21,13 @@ router.post('/', requireAdmin, (req, res) => {
     `).run(name, description, breakfast ? 1 : 0, lunch ? 1 : 0, dinner ? 1 : 0);
 
     const group = db.prepare('SELECT * FROM groups WHERE id = ?').get(result.lastInsertRowid);
+
+    logAdminAction(req, {
+      action: 'CREATE', resourceType: 'group',
+      resourceId: group.id, resourceLabel: group.name,
+      newValues: { name: group.name, description: group.description, breakfast: !!group.breakfast, lunch: !!group.lunch, dinner: !!group.dinner },
+    });
+
     res.status(201).json({ group });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
@@ -48,6 +56,14 @@ router.put('/:id', requireAdmin, (req, res) => {
     );
 
     const updated = db.prepare('SELECT * FROM groups WHERE id = ?').get(req.params.id);
+
+    logAdminAction(req, {
+      action: 'UPDATE', resourceType: 'group',
+      resourceId: group.id, resourceLabel: updated.name,
+      oldValues: { name: group.name, description: group.description, breakfast: !!group.breakfast, lunch: !!group.lunch, dinner: !!group.dinner },
+      newValues: { name: updated.name, description: updated.description, breakfast: !!updated.breakfast, lunch: !!updated.lunch, dinner: !!updated.dinner },
+    });
+
     res.json({ group: updated });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
@@ -67,6 +83,13 @@ router.delete('/:id', requireAdmin, (req, res) => {
   }
 
   db.prepare('DELETE FROM groups WHERE id = ?').run(req.params.id);
+
+  logAdminAction(req, {
+    action: 'DELETE', resourceType: 'group',
+    resourceId: group.id, resourceLabel: group.name,
+    oldValues: { name: group.name, description: group.description, breakfast: !!group.breakfast, lunch: !!group.lunch, dinner: !!group.dinner },
+  });
+
   res.json({ message: 'Group deleted' });
 });
 

@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db/index');
 const { requireAdmin } = require('../middleware/roleCheck');
+const { logAdminAction } = require('../db/auditLog');
 
 const router = express.Router();
 
@@ -26,6 +27,13 @@ router.post('/', requireAdmin, (req, res) => {
     `).run(String(staff_id).trim(), name, role, pin_hash);
 
     const user = db.prepare('SELECT id, staff_id, name, role, active FROM users WHERE id = ?').get(result.lastInsertRowid);
+
+    logAdminAction(req, {
+      action: 'CREATE', resourceType: 'user',
+      resourceId: user.id, resourceLabel: user.staff_id,
+      newValues: { staff_id: user.staff_id, name: user.name, role: user.role, active: user.active },
+    });
+
     res.status(201).json({ user });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
@@ -40,8 +48,8 @@ router.put('/:id', requireAdmin, (req, res) => {
   if (!user) return res.status(404).json({ message: 'User not found' });
 
   const { name, role, active, pin } = req.body;
-
   const pin_hash = pin ? bcrypt.hashSync(String(pin), 10) : user.pin_hash;
+  const pinChanged = !!pin;
 
   try {
     db.prepare(`
@@ -55,6 +63,14 @@ router.put('/:id', requireAdmin, (req, res) => {
     );
 
     const updated = db.prepare('SELECT id, staff_id, name, role, active FROM users WHERE id = ?').get(req.params.id);
+
+    logAdminAction(req, {
+      action: 'UPDATE', resourceType: 'user',
+      resourceId: user.id, resourceLabel: user.staff_id,
+      oldValues: { name: user.name, role: user.role, active: !!user.active },
+      newValues: { name: updated.name, role: updated.role, active: !!updated.active, pin_changed: pinChanged },
+    });
+
     res.json({ user: updated });
   } catch (err) {
     throw err;
@@ -62,9 +78,17 @@ router.put('/:id', requireAdmin, (req, res) => {
 });
 
 router.delete('/:id', requireAdmin, (req, res) => {
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  const user = db.prepare('SELECT id, staff_id, name, role, active FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
+
   db.prepare('UPDATE users SET active = 0 WHERE id = ?').run(req.params.id);
+
+  logAdminAction(req, {
+    action: 'DELETE', resourceType: 'user',
+    resourceId: user.id, resourceLabel: user.staff_id,
+    oldValues: { name: user.name, role: user.role, active: true },
+  });
+
   res.json({ message: 'User deactivated' });
 });
 

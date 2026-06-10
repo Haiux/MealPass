@@ -19,6 +19,8 @@ app.use('/api/schedules', require('./routes/schedules'));
 app.use('/api/logs', require('./routes/logs'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/audit-logs', require('./routes/auditLogs'));
+app.use('/api/reports', require('./routes/reports'));
 
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, '../../client/dist');
