@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
+import { Users as UsersIcon } from 'lucide-react';
 import api from '../../api/axios';
 import Modal from '../../components/Modal';
 import Badge from '../../components/Badge';
+import Button from '../../components/Button';
+import PageHeader from '../../components/PageHeader';
+import EmptyState from '../../components/EmptyState';
 
 const EMPTY = { staff_id: '', name: '', role: 'scanner', pin: '', active: true };
+
+const inputCls = 'w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent';
+const labelCls = 'block text-xs font-medium text-zinc-500 mb-1.5';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -28,7 +36,9 @@ export default function Users() {
       if (modal.mode === 'edit' && !payload.pin) delete payload.pin;
       if (modal.mode === 'add') await api.post('/users', payload);
       else await api.put(`/users/${modal.user.id}`, payload);
-      setModal(null); load();
+      setModal(null);
+      toast.success(modal.mode === 'add' ? 'User added.' : 'User updated.');
+      load();
     } catch (err) {
       setError(err.response?.data?.message || 'Save failed');
     } finally { setSaving(false); }
@@ -36,40 +46,52 @@ export default function Users() {
 
   async function deactivate(id) {
     if (!confirm('Deactivate this user?')) return;
-    await api.delete(`/users/${id}`); load();
+    try {
+      await api.delete(`/users/${id}`);
+      toast.success('User deactivated.');
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Deactivate failed');
+    }
   }
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-lg font-semibold text-gray-900">Users</h1>
-        <button onClick={openAdd} className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1.5 rounded-lg">+ Add User</button>
-      </div>
+      <PageHeader
+        title="Users"
+        subtitle="Staff and scanner accounts"
+        action={<Button onClick={openAdd}>+ Add User</Button>}
+      />
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-zinc-100 shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-100 text-xs text-gray-400">
-              <th className="text-left px-4 py-2.5 font-medium">Staff ID</th>
-              <th className="text-left px-4 py-2.5 font-medium">Name</th>
-              <th className="text-left px-4 py-2.5 font-medium">Role</th>
-              <th className="text-left px-4 py-2.5 font-medium">Status</th>
-              <th className="px-4 py-2.5"></th>
+            <tr className="border-b border-zinc-100 text-xs text-zinc-400">
+              <th className="text-left px-4 py-2 font-medium">Staff ID</th>
+              <th className="text-left px-4 py-2 font-medium">Name</th>
+              <th className="text-left px-4 py-2 font-medium">Role</th>
+              <th className="text-left px-4 py-2 font-medium">Status</th>
+              <th className="px-4 py-2"></th>
             </tr>
           </thead>
           <tbody>
-            {users.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No users</td></tr>
-            )}
-            {users.map(u => (
-              <tr key={u.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                <td className="px-4 py-2.5 font-mono text-xs text-gray-700">{u.staff_id}</td>
-                <td className="px-4 py-2.5 text-gray-800">{u.name}</td>
-                <td className="px-4 py-2.5"><Badge type={u.role} /></td>
-                <td className="px-4 py-2.5"><Badge type={u.active ? 'active' : 'inactive'} label={u.active ? 'Active' : 'Inactive'} /></td>
-                <td className="px-4 py-2.5 text-right">
-                  <button onClick={() => openEdit(u)} className="text-xs text-blue-500 hover:text-blue-700 mr-3">Edit</button>
-                  {u.active && <button onClick={() => deactivate(u.id)} className="text-xs text-red-400 hover:text-red-600">Deactivate</button>}
+            {users.length === 0 ? (
+              <tr>
+                <td colSpan={5}>
+                  <EmptyState icon={UsersIcon} title="No users" description="Add an admin or scanner account." />
+                </td>
+              </tr>
+            ) : users.map(u => (
+              <tr key={u.id} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50">
+                <td className="px-4 py-1.5 font-mono text-xs text-zinc-600">{u.staff_id}</td>
+                <td className="px-4 py-1.5 text-zinc-800">{u.name}</td>
+                <td className="px-4 py-1.5"><Badge type={u.role} /></td>
+                <td className="px-4 py-1.5"><Badge type={u.active ? 'active' : 'inactive'} label={u.active ? 'Active' : 'Inactive'} /></td>
+                <td className="px-4 py-1.5 text-right">
+                  <button onClick={() => openEdit(u)} className="text-xs text-zinc-500 hover:text-zinc-800 mr-3 transition-colors">Edit</button>
+                  {u.active && (
+                    <button onClick={() => deactivate(u.id)} className="text-xs text-red-400 hover:text-red-600 transition-colors">Deactivate</button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -81,45 +103,45 @@ export default function Users() {
         <Modal title={modal.mode === 'add' ? 'Add User' : 'Edit User'} onClose={() => setModal(null)}>
           <div className="space-y-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Staff ID (4–5 digits)</label>
+              <label className={labelCls}>Staff ID (4–5 digits)</label>
               <input type="text" inputMode="numeric" maxLength={5} value={form.staff_id}
                 onChange={e => setForm(f => ({ ...f, staff_id: e.target.value.replace(/\D/g, '') }))}
                 disabled={modal.mode === 'edit'}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50" />
+                className={`${inputCls} disabled:bg-zinc-50 disabled:text-zinc-400`} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Name</label>
+              <label className={labelCls}>Name</label>
               <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Role</label>
+              <label className={labelCls}>Role</label>
               <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className={inputCls}>
                 <option value="scanner">Scanner</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">
-                PIN {modal.mode === 'edit' && <span className="text-gray-400">(leave blank to keep current)</span>}
+              <label className={labelCls}>
+                PIN {modal.mode === 'edit' && <span className="text-zinc-300 font-normal">(leave blank to keep current)</span>}
               </label>
               <input type="password" value={form.pin} onChange={e => setForm(f => ({ ...f, pin: e.target.value }))}
                 placeholder={modal.mode === 'edit' ? 'New PIN (optional)' : 'Set PIN'}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className={inputCls} />
             </div>
             {modal.mode === 'edit' && (
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="uactive" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} className="rounded" />
-                <label htmlFor="uactive" className="text-sm text-gray-600">Active</label>
+                <input type="checkbox" id="uactive" checked={form.active}
+                  onChange={e => setForm(f => ({ ...f, active: e.target.checked }))}
+                  className="rounded border-zinc-300" />
+                <label htmlFor="uactive" className="text-sm text-zinc-600">Active</label>
               </div>
             )}
-            {error && <div className="text-red-500 text-xs bg-red-50 rounded px-3 py-2">{error}</div>}
+            {error && <div className="text-red-600 text-xs bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</div>}
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setModal(null)} className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5">Cancel</button>
-              <button onClick={save} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1.5 rounded-lg disabled:opacity-50">
-                {saving ? 'Saving…' : 'Save'}
-              </button>
+              <Button variant="secondary" onClick={() => setModal(null)}>Cancel</Button>
+              <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
             </div>
           </div>
         </Modal>

@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import PageHeader from '../../components/PageHeader';
+import Button from '../../components/Button';
 
-const MEAL_LABELS = { breakfast: '🌅 Breakfast', lunch: '☀️ Lunch', dinner: '🌙 Dinner' };
+const MEAL_CONFIG = {
+  breakfast: { label: 'Breakfast', dot: 'bg-orange-400' },
+  lunch:     { label: 'Lunch',     dot: 'bg-amber-400' },
+  dinner:    { label: 'Dinner',    dot: 'bg-indigo-400' },
+};
+
+const inputCls = 'w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent';
 
 export default function Schedules() {
   const [schedules, setSchedules] = useState([]);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
 
   const load = () => api.get('/schedules').then(r => setSchedules(r.data.schedules));
   useEffect(() => { load(); }, []);
@@ -16,7 +24,6 @@ export default function Schedules() {
   function startEdit(s) {
     setEditing(s.id);
     setForm({ start_time: s.start_time, end_time: s.end_time, active: !!s.active });
-    setMsg('');
   }
 
   async function save(id) {
@@ -24,76 +31,91 @@ export default function Schedules() {
     try {
       await api.put(`/schedules/${id}`, form);
       setEditing(null);
-      setMsg('Schedule updated.');
+      toast.success('Schedule updated.');
       load();
-    } catch { setMsg('Save failed.'); }
-    finally { setSaving(false); }
+    } catch {
+      toast.error('Save failed.');
+    } finally { setSaving(false); }
   }
 
   async function toggleActive(s) {
-    await api.put(`/schedules/${s.id}`, { active: !s.active });
-    load();
+    try {
+      await api.put(`/schedules/${s.id}`, { ...s, active: !s.active });
+      load();
+    } catch {
+      toast.error('Failed to toggle schedule.');
+    }
   }
 
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-lg font-semibold text-gray-900">Meal Schedules</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Configure time windows for each meal period.</p>
-      </div>
+      <PageHeader title="Meal Schedules" subtitle="Configure time windows for each meal period." />
 
-      {msg && <div className="mb-4 text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2 w-fit">{msg}</div>}
-
-      <div className="space-y-4 max-w-xl">
-        {schedules.map(s => (
-          <div key={s.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-medium text-gray-800">{MEAL_LABELS[s.meal_type] || s.meal_type}</div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => toggleActive(s)}
-                  className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors
-                    ${s.active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-                >
-                  {s.active ? 'Active' : 'Inactive'}
-                </button>
-                <button onClick={() => startEdit(s)} className="text-xs text-blue-500 hover:text-blue-700">Edit</button>
-              </div>
-            </div>
-
-            {editing === s.id ? (
-              <div className="space-y-3">
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-400 mb-1">Start Time</label>
-                    <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-400 mb-1">End Time</label>
-                    <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
+      <div className="space-y-3 max-w-lg">
+        {schedules.map(s => {
+          const cfg = MEAL_CONFIG[s.meal_type] || { label: s.meal_type, dot: 'bg-zinc-400' };
+          return (
+            <div key={s.id} className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
+                  <span className="font-medium text-zinc-800 text-sm">{cfg.label}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input type="checkbox" id={`active-${s.id}`} checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} className="rounded" />
-                  <label htmlFor={`active-${s.id}`} className="text-sm text-gray-600">Active</label>
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <button onClick={() => save(s.id)} disabled={saving}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1.5 rounded-lg disabled:opacity-50">
-                    {saving ? 'Saving…' : 'Save'}
+                  <button
+                    onClick={() => toggleActive(s)}
+                    className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors
+                      ${s.active
+                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100'
+                        : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200 hover:bg-zinc-200'}`}
+                  >
+                    {s.active ? 'Active' : 'Inactive'}
                   </button>
-                  <button onClick={() => setEditing(null)} className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5">Cancel</button>
+                  {editing !== s.id && (
+                    <button onClick={() => startEdit(s)} className="text-xs text-zinc-500 hover:text-zinc-800 transition-colors">
+                      Edit
+                    </button>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="text-sm text-gray-500">
-                {s.start_time} – {s.end_time}
-              </div>
-            )}
-          </div>
-        ))}
+
+              {editing === s.id ? (
+                <div className="space-y-3 pt-1">
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs text-zinc-500 mb-1.5">Start Time</label>
+                      <input type="time" value={form.start_time}
+                        onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))}
+                        className={inputCls} />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs text-zinc-500 mb-1.5">End Time</label>
+                      <input type="time" value={form.end_time}
+                        onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))}
+                        className={inputCls} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id={`active-${s.id}`} checked={form.active}
+                      onChange={e => setForm(f => ({ ...f, active: e.target.checked }))}
+                      className="rounded border-zinc-300" />
+                    <label htmlFor={`active-${s.id}`} className="text-sm text-zinc-600">Active</label>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" onClick={() => save(s.id)} disabled={saving}>
+                      {saving ? 'Saving…' : 'Save'}
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => setEditing(null)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-zinc-500 font-mono">
+                  {s.start_time} – {s.end_time}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

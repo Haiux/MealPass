@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
@@ -16,6 +17,13 @@ import AuditLog from './pages/admin/AuditLog';
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: { fontSize: '13px', borderRadius: '8px', fontFamily: 'Inter, sans-serif' },
+          success: { iconTheme: { primary: '#18181b', secondary: '#fff' } },
+        }}
+      />
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
